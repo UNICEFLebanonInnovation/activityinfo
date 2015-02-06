@@ -48,6 +48,9 @@ public class LocationsResource {
             json.writeStartObject();
             json.writeNumberField("id", location.getId());
             json.writeStringField("name", location.getName());
+            if (location.hasAxe()) {
+                json.writeStringField("axe", location.getAxe());
+            }
             if (location.hasCoordinates()) {
                 json.writeNumberField("latitude", location.getLatitude());
                 json.writeNumberField("longitude", location.getLongitude());
