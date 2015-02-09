@@ -147,6 +147,13 @@ public class SitesResources {
                 json.writeEndObject();
             }
 
+            // write monthly reports
+            json.writeObjectFieldStart("monthlyReports");
+            MonthlyReportResult reports = getMonthlyReportsForSite(site.getId());
+            Set<String> months = getMonthStrings(reports);
+            writeMonthlyReportsArray(reports, months, json);
+            json.writeEndObject();
+
             // comments
             if (!Strings.isNullOrEmpty(site.getComments())) {
                 json.writeFieldName("comments");
@@ -287,24 +294,28 @@ public class SitesResources {
     @Produces("application/json")
     public String queryMonthlyReports(@PathParam("id") int siteId) throws IOException {
 
-        GetMonthlyReports command = new GetMonthlyReports(siteId, new Month(0,1), new Month(Integer.MAX_VALUE, 12));
-        MonthlyReportResult result = dispatcher.execute(command);
+        // get monthly reports
+        MonthlyReportResult result = getMonthlyReportsForSite(siteId);
 
         // list all months
-        Set<String> monthNames = Sets.newHashSet();
-        for(IndicatorRowDTO row : result.getData()) {
-            for(String propertyName : row.getPropertyNames()) {
-                if(propertyName.startsWith("M")) {
-                    monthNames.add(propertyName);
-                }
-            }
-        }
+        Set<String> monthNames = getMonthStrings(result);
 
         // write out results per month
         StringWriter writer = new StringWriter();
         JsonGenerator json = Jackson.createJsonFactory(writer);
 
         json.writeStartObject();
+        writeMonthlyReportsArray(result, monthNames, json);
+        json.writeEndObject();
+        json.close();
+
+        return writer.toString();
+    }
+
+    private void writeMonthlyReportsArray(MonthlyReportResult result,
+                                          Set<String> monthNames,
+                                          JsonGenerator json) throws IOException {
+
         for(String monthName : monthNames) {
             json.writeArrayFieldStart(formatMonth(monthName));
 
@@ -320,10 +331,25 @@ public class SitesResources {
             }
             json.writeEndArray();
         }
-        json.writeEndObject();
-        json.close();
+    }
 
-        return writer.toString();
+    private Set<String> getMonthStrings(MonthlyReportResult result) {
+
+        Set<String> monthNames = Sets.newHashSet();
+        for(IndicatorRowDTO row : result.getData()) {
+            for(String propertyName : row.getPropertyNames()) {
+                if(propertyName.startsWith("M")) {
+                    monthNames.add(propertyName);
+                }
+            }
+        }
+        return monthNames;
+    }
+
+    private MonthlyReportResult getMonthlyReportsForSite(int siteId) {
+
+        GetMonthlyReports command = new GetMonthlyReports(siteId, new Month(0,1), new Month(Integer.MAX_VALUE, 12));
+        return dispatcher.execute(command);
     }
 
     @Path("/cube")
